@@ -40,11 +40,36 @@ public class Rotator
     Vec3 B = new Vec3(0,0,0);                   // Zielpunkt
     Vec3 up = new Vec3(0,1,0);                  // up-Richtung
 
+    double g = 9.81;                                      // Erdbeschleunigung
+    double dt = 0.01;                                     // Zeitschritt
+
     // -------  Hantel-Pendel  ------
-    class Pendel {
+    class Pendel extends Dynamics {
         float d1 = 1.5f, r1 = 0.2f;                           // Abstand, Radius Kugel1
         float d2 = 0.6f, r2 = 0.1f;                           // Abstand, Radius Kugel2
-        float r3 = 0.04f;                                   // Radius Stab
+        float r3 = 0.04f;                                     // Radius Stab
+
+        double m = 1;                                   // Masse
+        double I = 2.5;                                 // Trägheitsmoment
+        double rs = 0.5 * d1;                           // Abstand Schwerpunkt
+
+        double phi0 = 0;
+        double omega0 = 0;
+        double[] x = { phi0, omega0 };
+
+        public double[] f(double[] x) {
+            double phi = x[0];
+            double omega = x[1];
+
+            return new double[]{
+                omega,
+                -m * g * rs * Math.cos(phi) / I
+            };
+        }
+
+        public void move(double dt) {
+            x = runge(x, dt);
+        }
 
         void zeichne(GL3 gl) {
             mygl.pushM();
@@ -155,8 +180,11 @@ public class Rotator
         mygl.setShadingLevel(gl, 1);
         mygl.setColor(1, 0, 0);
         mygl.multM(gl, Mat4.translate(0, 1.8f, 0));
+
+        mygl.multM(gl, Mat4.rotate((float)(pendel.x[0] * 180 / Math.PI), 0, 0, 1));
         pendel.zeichne(gl);
-        mygl.setColor(1, 1, 0);
+
+        pendel.move(dt);
     }
 
 
