@@ -1,0 +1,159 @@
+body {
+	background: rgb(245, 245, 245); margin: 0px; padding: 15px 20px; font-family: "Trebuchet MS", arial, verdana, helvetica, sans-serif;
+}
+#container {
+	padding: 0px; min-width: 700px;
+}
+#header {
+	height: 90px; background-color: rgb(255, 255, 255);
+}
+#logo {
+	padding: 25px 0px 0px 30px; font-size: 40px;
+}
+#logo a {
+	color: rgb(68, 68, 68); text-decoration: none;
+}
+#logo img {
+	margin-top: -10px;
+}
+#slogan {
+	padding: 65px 15px 0px 0px; color: rgb(68, 68, 68); font-size: 18px; float: right;
+}
+#menu {
+	background-color: rgb(201, 226, 255);
+}
+#menu li {
+	background-color: rgb(201, 226, 255);
+}
+#sidebar li a:hover {
+	background-color: rgb(201, 226, 255);
+}
+#footer {
+	background-color: rgb(201, 226, 255);
+}
+#menu a {
+	color: rgb(59, 77, 79);
+}
+#footer a {
+	color: rgb(59, 77, 79);
+}
+#footer {
+	color: rgb(59, 77, 79);
+}
+#menu {
+	height: 40px; margin-top: 5px;
+}
+#menu ul {
+	margin: 0px; padding: 0px;
+}
+#menu li {
+	list-style: none; float: left;
+}
+#menu a {
+	padding: 10px 20px; height: 20px; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: bold; text-decoration: none; float: left;
+}
+#menu a:hover {
+	color: rgb(68, 68, 68); background-color: rgb(255, 255, 255);
+}
+#main {
+	margin: 5px 0px; width: 100%; height: 100%; line-height: 1.4; font-size: 13px; float: left; background-color: rgb(255, 255, 255);
+}
+#main a {
+	color: rgb(17, 17, 17);
+}
+#main a:hover {
+	color: rgb(0, 0, 0); background-color: rgb(238, 238, 238);
+}
+#main br {
+	line-height: 8px;
+}
+#main img {
+	padding: 5px;
+}
+.rss {
+	background: url("images/feed-icon-10x10.png") no-repeat 2px 50% !important; padding: 0px 0px 0px 15px;
+}
+.fill {
+	margin-right: 0px !important;
+}
+.centered {
+	text-align: center; margin-right: auto; margin-left: auto;
+}
+.clear {
+	clear: both;
+}
+.column {
+	padding-right: 50px; padding-left: 25px; float: left;
+}
+.splash {
+	font-size: 22px; margin-right: auto; margin-left: auto;
+}
+#text ul {
+	padding: 0.3em 0em 0.3em 1em;
+}
+#text ul li {
+	background: url("images/bullet.gif") no-repeat 0em 0.3em; list-style: none; padding-left: 0.8em;
+}
+#text ul li {
+	background-image: url("images/bullet_child.gif");
+}
+#text ul li {
+	margin-bottom: 0.5em;
+}
+#text ol {
+	padding: 0.3em 0em 0.3em 1em;
+}
+#text ol li {
+	list-style: decimal; padding-left: 0em; background-image: none;
+}
+#text ol li {
+	margin-bottom: 0.5em;
+}
+#sidebar {
+	padding: 0px 30px 30px; width: 160px; height: auto; float: right;
+}
+#sidebar h3 {
+	margin: 20px 0px 5px; font-size: 17px; font-weight: normal;
+}
+#sidebar ul {
+	margin: 0px; padding: 0px;
+}
+#sidebar li {
+	list-style: none;
+}
+#sidebar li a {
+	padding: 3px; color: rgb(17, 17, 17); text-decoration: none; display: block;
+}
+#text {
+	padding: 10px 30px 30px; margin-right: 225px; border-right-color: rgb(245, 245, 245); border-right-width: 5px; border-right-style: solid;
+}
+#text h1 {
+	margin: 20px 0px 10px; font-size: 22px; font-weight: normal;
+}
+#text h2 {
+	margin: 20px 0px 10px; font-size: 19px; font-weight: normal;
+}
+#footer {
+	height: 40px; clear: both; font-size: 11px;
+}
+#footer a:hover {
+	color: rgb(68, 68, 68);
+}
+#footer_left {
+	padding: 5px 0px 0px 5px; float: left;
+}
+#footer_left img {
+	margin-right: 5px; float: left;
+}
+#footer_right {
+	padding: 13px 30px 0px 0px; float: right;
+}
+td.streams_text {
+	text-align: left; vertical-align: middle;
+}
+td.streams_thumbs {
+	width: 400px;
+}
+#streams img {
+	width: 120px; height: 90px;
+}
