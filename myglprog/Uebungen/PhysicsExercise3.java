@@ -7,11 +7,13 @@ import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.util.FPSAnimator;
 
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.Random;
 
-public class PhysicsExercise3 implements WindowListener, GLEventListener {
+public class PhysicsExercise3 implements WindowListener, GLEventListener, KeyListener {
 
     //  ---------  global data  ---------------------------
     private String windowTitle = "Physics Exercise 3 - curtain with wind";
@@ -30,12 +32,25 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
     private float yBottom = -2, yTop = 2;
     private float zNear = -100, zFar = 1000;
 
+    private float elevation = 10;
+    private float azimut = 30;
+    private float distance = 3;                                 // Distance to O
+    private Vec3 A = new Vec3(0,1, distance);             // Camera-Pos. (Eye)
+    private Vec3 B = new Vec3(0,0.6,0);             // LookAt (Point of interest)
+    private Vec3 up = new Vec3(0,1,0);                 // Up-Direction
+
     //  ---------  Data for curtain/wind animation  ---------------------------
     private float curtainHeight = 1.2f;
     private float curtainWidth = 2;
     private int cols = 50;                                      // Column count of curtain
     private int rows = 30;                                      // Row count of curtain
     private Vec3[][] curtainNodes = new Vec3[rows][cols];       // All nodes of curtain
+    private Vec3[][] nodesV = new Vec3[rows][cols];             // Velocity of each node
+
+    // Wind random min and max
+    private float windXmin = -0.6f, windXmax = 0.6f;
+    private float windYmin = -0.1f, windYmax = 0.1f;
+    private float windZmin = -1.1f, windZmax = 1.2f;
 
     //  ---------  Methods  --------------------------------
 
@@ -43,7 +58,6 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
     {
         createFrame();
     }
-
 
     void createFrame()
     {
@@ -56,6 +70,10 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         canvas.addGLEventListener(this);
         f.add(canvas);
         f.setVisible(true);
+
+        // Add keyListener to canvas and frame
+        f.addKeyListener(this);
+        canvas.addKeyListener(this);
     }
 
     /**
@@ -74,26 +92,26 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         mygl.putVertex(x1, y1, z1);
         mygl.putVertex(x2, y2, z2);
         mygl.copyBuffer(gl);
-        mygl.drawArrays(gl, GL3.GL_LINE_LOOP);
+        mygl.drawArrays(gl, GL3.GL_LINE_STRIP);
     }
 
     /**
      * @param gl gl object
      */
     private void drawFloor(GL3 gl) {
-        int floorCount = 12;
-        int floorPosition = 0;
+        int floorCount = 24;
+        int floorPositionY = 0;
         float floorLineDistance = 0.5f;
-        int floorLineLength = 5;
+        int floorLineLength = 10;
 
         // Draw line along x-Axe
         for (float i = -floorCount; i < floorCount; i += floorLineDistance) {
-            drawLine(gl, i, floorPosition, 0, i, floorPosition, floorLineLength);
+            drawLine(gl, i, floorPositionY, 0, i, floorPositionY, floorLineLength);
         }
 
         // Draw line along z-Axe
         for (float j = 0; j < (2 * floorCount); j += floorLineDistance) {
-            drawLine(gl, -floorLineLength, floorPosition, 0, floorLineLength, floorPosition, j);
+            drawLine(gl, -floorLineLength, floorPositionY, 0, floorLineLength, floorPositionY, j);
         }
     }
 
@@ -131,23 +149,23 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
             for (int j = 0; j < cols; j++) {
                 // Draw vertical lines
                 if (i < rows - 1) {
-                    Vec3 currentRowStart = curtainNodes[i][j];
-                    Vec3 currentRowEnd = curtainNodes[i + 1][j];
+                    Vec3 currentNodeRowStart = curtainNodes[i][j];
+                    Vec3 currentNodeRowEnd = curtainNodes[i + 1][j];
 
                     drawLine(gl,
-                        currentRowStart.x, currentRowStart.y, currentRowStart.z,
-                        currentRowEnd.x, currentRowEnd.y, currentRowEnd.z
+                        currentNodeRowStart.x, currentNodeRowStart.y, currentNodeRowStart.z,
+                        currentNodeRowEnd.x, currentNodeRowEnd.y, currentNodeRowEnd.z
                     );
                 }
 
                 // Draw horizontal lines
                 if (j < cols - 1) {
-                    Vec3 currentColStart = curtainNodes[i][j];
-                    Vec3 currentColEnd = curtainNodes[i][j + 1];
+                    Vec3 currentNodeColStart = curtainNodes[i][j];
+                    Vec3 currentNodeColEnd = curtainNodes[i][j + 1];
 
                     drawLine(gl,
-                        currentColStart.x, currentColStart.y, currentColStart.z,
-                        currentColEnd.x, currentColEnd.y, currentColEnd.z
+                        currentNodeColStart.x, currentNodeColStart.y, currentNodeColStart.z,
+                        currentNodeColEnd.x, currentNodeColEnd.y, currentNodeColEnd.z
                     );
                 }
             }
@@ -155,12 +173,12 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
     }
 
     /**
-     * Initialize positions for all nodes of curtain
+     * Initialize positions and velocities for all nodes of curtain
      */
     private void initCurtainNodes() {
         // Sizes of curtain
         float startPosTop = 1.4f;
-        float startPosLeft = 0.5f;
+        float startPosLeft = -1f;
 
         // Initial positions of a node
         int zPos = 0;
@@ -174,7 +192,11 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
             float colPos = startPosLeft;
             // Fetch all columns
             for (int j = 0; j < cols; j++) {
+                // Initialize position of each node
                 curtainNodes[i][j] = new Vec3(colPos, rowPos, zPos);
+
+                // Initialize velocity for each node with Zero
+                nodesV[i][j] = new Vec3(0, 0, 0);
                 colPos += stepSizeH;
             }
             rowPos -= stepSizeV;
@@ -187,61 +209,74 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
     private void calculateNewNodesPositions() {
         // Constants for calculation of each node
         float dt = 0.01f;
-        float k = 5;
-//        float k = 500;
         float g = 0.981f;
         float m = 0.1f;
         float velocityAbsorption = 0.95f;
 
-        // Velocity for a single node (init)
-        Vec3 v = new Vec3( 0, 0, 0);
-
         // Random wind forces for each column
-        Vec3[] windForces = new Vec3[cols];
-        for (int j = 0; j < cols; j++) {
-            windForces[j] = new Vec3(
-                getRandomNumberInRange(-0.6f, 0.6f),
-                getRandomNumberInRange(-0.1f, 0.1f),
-                getRandomNumberInRange(-1.1f, 1.2f)
-            );
-        }
+        Vec3[] windForces = getWindForcesForColumns();
+
+        // Calculate all spring forces of current node positions
+        Vec3[][] springForces = getAllSpringForces();
 
         // Fetch all rows (except first row, these node stick to the curtain bar)
         for (int i = 1; i < rows; i++) {
             // Fetch all columns
             for (int j = 0; j < cols; j++) {
-                System.out.println("curtainNodes[i][j]: " + curtainNodes[i][j]);
-
                 // Gravitational force
                 Vec3 mainForce = new Vec3(0, -m * g, 0);
-                System.out.println("kraft-1: " + mainForce);
 
-                // Calculate spring forces of all neighbours sum them up with the gravitational force
-                Vec3 springForce = calculateSpringForce(i, j, k);
-                mainForce = mainForce.add(springForce);
-
-                System.out.println("federkraft: " + springForce);
-                System.out.println("kraft-2: " + mainForce);
+                // Calculate spring forces of all neighbours and sum them up with the gravitational force
+                mainForce = mainForce.add(springForces[i][j]);
 
                 // Add random wind force (calculated before for each column)
                 mainForce = mainForce.add(windForces[j]);
-                System.out.println("kraft-3: " + mainForce);
 
                 // a = F / m
                 Vec3 a = mainForce.scale(1/m);
 
                 // v = v + a * dt
-                v = v.add( a.scale(dt) );
+                nodesV[i][j] = nodesV[i][j].add( a.scale(dt) );
 
                 // v = 0.95 * v
-                v = v.scale(velocityAbsorption);
+                nodesV[i][j] = nodesV[i][j].scale(velocityAbsorption);
 
                 // x = x + v * dt
-                curtainNodes[i][j] = curtainNodes[i][j].add(v.scale(dt));
-                System.out.println("curtainNodes[i][j]: " + curtainNodes[i][j]);
-                System.out.println("-------------------------------------------------");
+                curtainNodes[i][j] = curtainNodes[i][j].add(nodesV[i][j].scale(dt));
             }
         }
+    }
+
+    /**
+     * Generates random wind forces for all columns
+     *
+     * @return Vec3[]: all random wind forces for each column
+     */
+    private Vec3[] getWindForcesForColumns() {
+        Vec3[] windForces = new Vec3[cols];
+        for (int j = 0; j < cols; j++) {
+            windForces[j] = new Vec3(
+                getRandomNumberInRange(windXmin, windXmax),
+                getRandomNumberInRange(windYmin, windYmax),
+                getRandomNumberInRange(windZmin, windZmax)
+            );
+        }
+
+        return windForces;
+    }
+
+    private Vec3[][] getAllSpringForces() {
+        Vec3[][] springForces = new Vec3[rows][cols];
+        float k = 500;
+
+        for (int i = 1; i < rows; i++) {
+            // Fetch all columns
+            for (int j = 0; j < cols; j++) {
+                springForces[i][j] = calculateSpringForce(i, j, k);
+            }
+        }
+
+        return springForces;
     }
 
     /**
@@ -256,6 +291,7 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         Vec3 currentNode = curtainNodes[rowIndex][colIndex];
         Vec3 springForce = new Vec3(0,0,0);
 
+        // d0 is initial distance between nodes (different between columns and rows)
         float d0UpDown = curtainHeight / rows;
         float d0LeftRight = curtainWidth / cols;
 
@@ -295,7 +331,7 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         // d = AB = B - A
         Vec3 dVector = nextNode.subtract(currentNode);
         // |d| = sqrt( pow(d.x) + pow(d.y) + pow(d.z) )
-        float normDvector = (float)Math.sqrt( Math.pow(dVector.x, 2) + Math.pow(dVector.y, 2) + Math.pow(dVector.z, 2) );
+        float normDvector = currentNode.distance(nextNode);
         // (|d| - d0)
         float springDeflection = normDvector - d0;
         // (d / |d|)
@@ -328,9 +364,10 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         System.out.println("OpenGl Version: " + gl.glGetString(gl.GL_VERSION));
         System.out.println("Shading Language: " + gl.glGetString(gl.GL_SHADING_LANGUAGE_VERSION));
         System.out.println();
+
         programId = MyShaders.initShaders(gl, vShader, fShader);
         mygl = new MyGLBase1(gl, programId, maxVerts);
-        gl.glClearColor(0.9f, 0.9f, 0.9f, 1);    // Hintergrundfarbe
+        gl.glClearColor(0.9f, 0.9f, 0.9f, 1);    // Background color
 
         // Initialize animation with 40 fps and start (Display method will be called 40 times per frame)
         FPSAnimator anim = new FPSAnimator(canvas, 40, true);
@@ -351,24 +388,22 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
         mygl.setP(gl, Mat4.ortho(xLeft, xRight, yBottom, yTop, zNear, zFar));
 
         // -----  Camera-System
-        float elevation = 20;
-        float azimut = 40;
         Mat4 R1 = Mat4.rotate(-elevation, 1, 0, 0);
         Mat4 R2 = Mat4.rotate(azimut, 0, 1, 0);
         Mat4 R = R2.postMultiply(R1);
-        Vec3 A = new Vec3(0, 0, 2);                            // Camera-Pos. (Eye)
-        Vec3 B = new Vec3(0, 0, 0);                            // Aiming point
-        Vec3 up = new Vec3(0, 1, 0);                           // up-Direction
-        mygl.setM(gl, Mat4.lookAt(R.transform(A), B, R.transform(up)));
+        mygl.setM(gl, Mat4.lookAt(R.transform(A), R.transform(B), R.transform(up)));
+        mygl.setShadingLevel(gl, 0);
 
         // -----  Coordinate axes
         mygl.setColor(1, 0, 0);
         drawLine(gl, -5, 0, 0, 5, 0, 0); // x-Axe
         mygl.setColor(0, 1, 0);
-        drawLine(gl, 0, -5, 0, 0, 5, 0); // y-Axe
+        drawLine(gl, curtainNodes[0][0].x - 0.51f, -5, 0, -1.5f, 5, 0); // y-Axe
+        drawLine(gl, curtainNodes[0][curtainNodes[0].length-1].x + 0.51f, -5, 0, 1.5f, 5, 0); // y-Axe
         mygl.setColor(0, 0, 1);
         drawLine(gl, 0, 0, -10, 0, 0, 10); // z-Axe
 
+        // DRAW SCENE
         mygl.setColor(0, 0, 0);
         drawFloor(gl);
 
@@ -419,4 +454,50 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener {
     public void windowDeiconified(WindowEvent e) {}
     public void windowIconified(WindowEvent e) {}
     public void windowOpened(WindowEvent e) {}
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int code = e.getKeyCode();
+        switch (code)
+        { case KeyEvent.VK_LEFT: azimut--;
+            break;
+            case KeyEvent.VK_RIGHT: azimut++;
+                break;
+            case KeyEvent.VK_UP: elevation++;
+                break;
+            case KeyEvent.VK_DOWN: elevation--;
+                break;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {}
+    @Override
+    public void keyTyped(KeyEvent e) {
+        char key = e.getKeyChar();
+
+        switch (key) {
+            // Capital V: Abschussgeschwindigkeit vergrössern
+            case 'W':
+                windXmin -= 0.01f;
+                windXmax += 0.01f;
+                windYmin -= 0.01f;
+                windYmax += 0.01f;
+                windZmin -= 0.01f;
+                windZmax += 0.01f;
+                break;
+            // Lower v: Abschussgeschwindigkeit verkleinern
+            case 'w':
+                windXmin += 0.01f;
+                windXmax -= 0.01f;
+                windYmin += 0.01f;
+                windYmax -= 0.01f;
+                windZmin += 0.01f;
+                windZmax -= 0.01f;
+                break;
+
+            default:
+                break;
+        }
+    }
 }
