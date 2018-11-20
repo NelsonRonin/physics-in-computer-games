@@ -26,9 +26,20 @@ public class MyFirst3D implements WindowListener, GLEventListener, KeyListener {
     private MyGLBase1 mygl;                                      // Hilfsfunktionen
     private int maxVerts = 2048;                                 // max. Anzahl Vertices im Vertex-Array
 
+    // Kugelwerte
     private RotKoerper rotk;
+    private float kugelRadius = 1;
+    private float r1 = 0.5f, r2 = 2;    // Torus
+
+    // ------ Projektionsmatrix
     private float elevation = 20;
     private float azimut = 40;
+
+    private float xleft = -0.4f, xright = 0.4f;
+    private float ybottom, ytop;
+    private float znear = 0.5f, zfar = 100;
+
+    private float dist = 8;                                     // Abstand Kamera-System von 0
 
     //  ---------  Methoden  --------------------------------
 
@@ -61,15 +72,12 @@ public class MyFirst3D implements WindowListener, GLEventListener, KeyListener {
         mygl.drawArrays(gl, GL3.GL_LINES);
     }
 
-    public void zeichneDreieck(GL3 gl, float x1, float y1, float z1,
-                               float x2, float y2, float z2,
-                               float x3, float y3, float z3) {
-        mygl.rewindBuffer(gl);
-        mygl.putVertex(x1, y1, z1);
-        mygl.putVertex(x2, y2, z2);
-        mygl.putVertex(x3, y3, z3);
-        mygl.copyBuffer(gl);
-        mygl.drawArrays(gl, GL3.GL_TRIANGLES);
+    public void zeichneObjekt(GL3 gl) {
+        mygl.setShadingLevel(gl,1);
+        mygl.setColor(1, 0, 0);
+        rotk.zeichneTorus(gl, r1, r2, 20,30, true );
+        mygl.setColor(1,1,0);
+        rotk.zeichneTorus(gl, r1, r2, 20,30, false );
     }
 
     //  ----------  OpenGL-Events   ---------------------------
@@ -103,23 +111,17 @@ public class MyFirst3D implements WindowListener, GLEventListener, KeyListener {
         gl.glEnable(GL3.GL_DEPTH_TEST);
         gl.glClear(GL3.GL_COLOR_BUFFER_BIT | GL3.GL_DEPTH_BUFFER_BIT);
 
-        // ------ Projektionsmatrix
-        float xleft = -4, xright = 4;
-        float ybottom = -3, ytop = 3;
-        float znear = -100, zfar = 1000;
-        mygl.setP(gl, Mat4.ortho(xleft, xright, ybottom, ytop, znear, zfar));
-
         // -----  Kamera-System
         Mat4 R1 = Mat4.rotate(-elevation, 1, 0, 0);
         Mat4 R2 = Mat4.rotate(azimut, 0, 1, 0);
         Mat4 R = R2.postMultiply(R1);
-
-        Vec3 A = new Vec3(0, 0, 3);                            // Kamera-Pos. (Auge)
+        Vec3 A = new Vec3(0, 0, dist);                            // Kamera-Pos. (Auge)
         Vec3 B = new Vec3(0, 0, 0);                            // Zielpunkt
         Vec3 up = new Vec3(0, 1, 0);                           // up-Richtung
 
+        mygl.setM(gl, Mat4.ID);
+        mygl.setLightPosition(gl, 0, 0, 10);
         mygl.setM(gl, Mat4.lookAt(R.transform(A), B, R.transform(up)));
-
         mygl.setShadingLevel(gl,0);
 
         // -----  Koordinatenachsen
@@ -128,23 +130,16 @@ public class MyFirst3D implements WindowListener, GLEventListener, KeyListener {
         zeichneStrecke(gl, 0, 0, 0, 0, 5, 0);         // y-Achse
         zeichneStrecke(gl, 0, 0, 0, 0, 0, 5);         // z-Achse
 
-        // -----  Figuren zeichnen
-        // Dreieck im 3D Raum mit Strecke durch Dreieck
-//        mygl.setColor(1, 1, 1);
-//        zeichneStrecke(gl, -1, 3, 5, 2, -0.5f, -4);
-//        mygl.setColor(1, 0, 0);
-//        zeichneDreieck(gl, 0, 0.3f, 0.3f, 2.5f, 0.8f, 1, 0.5f, 1.5f, -1);
-
         // Kugel mit Licht
         mygl.setShadingParam(gl, 0.2f, 0.6f);
         mygl.setShadingParam2(gl, 0.4f, 20);
-        mygl.setLightPosition(gl, 0,0,10);
-        mygl.setShadingLevel(gl,1);
+        mygl.setShadingLevel(gl, 1);
 
-        mygl.setColor(1, 0, 0);
-        rotk.zeichneKugel(gl, 0.5f, 20,20, true );
-//        mygl.setColor(1,1,0);
-//        rotk.zeichneKugel(gl, 0.5f, 20,20, false );
+        zeichneObjekt(gl);
+
+        // Kugel weiter hinten zeichnen
+        mygl.multM(gl, Mat4.translate(-2, 0, -8));
+        zeichneObjekt(gl);
     }
 
 
@@ -194,6 +189,12 @@ public class MyFirst3D implements WindowListener, GLEventListener, KeyListener {
         GL3 gl = drawable.getGL().getGL3();
         // Set the viewport to be the entire window
         gl.glViewport(0, 0, width, height);
+
+        // ---- Projektionsmatrix
+        float aspect = (float)height/width;
+        ybottom = aspect * xleft;
+        ytop = aspect * xright;
+        mygl.setP(gl, Mat4.perspective(xleft, xright, ybottom, ytop, znear, zfar));
     }
 
     @Override

@@ -11,37 +11,36 @@ import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 
-public class Rotator
-       implements WindowListener, GLEventListener, KeyListener
+public class Rotator implements WindowListener, GLEventListener, KeyListener
 {
 
     //  ---------  globale Daten  ---------------------------
 
-    String windowTitle = "JOGL-Application";
-    int windowWidth = 800;
-    int windowHeight = 600;
-    String vShader = MyShaders.vShader2;                 // Vertex-Shader
-    String fShader = MyShaders.fShader0;                 // Fragment-Shader
-    Frame frame;
-    GLCanvas canvas;                                     // OpenGL Window
-    int programId;                                       // OpenGL-Id
-    MyGLBase1 mygl;                                      // Hilfsfunktionen
-    int maxVerts = 2048;                                 // max. Anzahl Vertices im Vertex-Array
-    RotKoerper rotk;                                     // Rotationskoerper
+    private String windowTitle = "JOGL-Application";
+    private int windowWidth = 800;
+    private int windowHeight = 600;
+    private String vShader = MyShaders.vShader2;                 // Vertex-Shader
+    private String fShader = MyShaders.fShader0;                 // Fragment-Shader
+    private Frame frame;
+    private GLCanvas canvas;                                     // OpenGL Window
+    private int programId;                                       // OpenGL-Id
+    private MyGLBase1 mygl;                                      // Hilfsfunktionen
+    private int maxVerts = 2048;                                 // max. Anzahl Vertices im Vertex-Array
+    private RotKoerper rotk;                                     // Rotationskoerper
 
-    float xleft=-5, xright=5;                            // ViewingVolume
-    float ybottom, ytop;
-    float znear=-100, zfar=1000;
+    private float xleft=-5, xright=5;                            // ViewingVolume
+    private float ybottom, ytop;
+    private float znear=-100, zfar=1000;
 
-    float elevation = 10;                                // Kamera-System
-    float azimut = 30;
-    float distance = 3;                                  // Abstand von O
-    Vec3 A = new Vec3(0,0,distance);               // Kamera-Pos. (Auge)
-    Vec3 B = new Vec3(0,0,0);                   // Zielpunkt
-    Vec3 up = new Vec3(0,1,0);                  // up-Richtung
+    private float elevation = 10;                                // Kamera-System
+    private float azimut = 30;
+    private float distance = 3;                                  // Abstand von O
+    private Vec3 A = new Vec3(0,0,distance);               // Kamera-Pos. (Auge)
+    private Vec3 B = new Vec3(0,0,0);                   // Zielpunkt
+    private Vec3 up = new Vec3(0,1,0);                  // up-Richtung
 
-    double g = 9.81;                                      // Erdbeschleunigung
-    double dt = 0.01;                                     // Zeitschritt
+    private double g = 9.81;                                      // Erdbeschleunigung
+    private double dt = 0.01;                                     // Zeitschritt
 
     // -------  Hantel-Pendel  ------
     class Pendel extends Dynamics {
@@ -238,7 +237,6 @@ public class Rotator
          case KeyEvent.VK_DOWN: elevation--;
                               break;
        }
-
     }
     public void keyReleased(KeyEvent e) {}
     public void keyTyped(KeyEvent e) { }
