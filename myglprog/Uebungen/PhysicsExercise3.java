@@ -459,8 +459,9 @@ public class PhysicsExercise3 implements WindowListener, GLEventListener, KeyLis
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
         switch (code)
-        { case KeyEvent.VK_LEFT: azimut--;
-            break;
+        {
+            case KeyEvent.VK_LEFT: azimut--;
+                break;
             case KeyEvent.VK_RIGHT: azimut++;
                 break;
             case KeyEvent.VK_UP: elevation++;
