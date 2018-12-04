@@ -210,30 +210,23 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
 
         @Override
         public double[] f(double[] x) {
-            double r3 = Math.pow(sR, 3);
-            double GM = -((eG * eM) / r3);
+            double r = Math.sqrt(Math.pow(x[0], 2) + Math.pow(x[2], 2));
+            double r3 = Math.pow(r, 3);
+
+            double s = Math.sqrt(Math.pow(moon.X[0] - x[0], 2) + Math.pow(moon.X[2] - x[2], 2));
+            double s3 = Math.pow(s, 3);
+
+            double GMearth = -((eG * eM) / r3);
+            double GMmoon = ((eG * moonM) / s3);
 
             return new double[]{
                 x[3],   //vx
-                x[4],   //vy
+                0,      //vy
                 x[5],   //vz
-                GM * x[0],
-                GM * x[1],
-                GM * x[2]
+                (GMearth * x[0]) + (GMmoon * (moon.X[0] - x[0])),
+                0,
+                (GMearth * x[2]) + (GMmoon * (moon.X[2] - x[2]))
             };
-        }
-
-        void berechneBahn(GL3 gl){
-            double[] X = {satX, satY, sR, satVX, satVY, satVZ };
-            mygl.rewindBuffer(gl);
-
-            for(int i = 0; i<1500; i++){
-                X = runge(X, dt);
-                mygl.putVertex((float) X[0], (float) X[1], (float) X[2]);
-            }
-
-            mygl.copyBuffer(gl);
-            mygl.drawArrays(gl, GL3.GL_LINE_LOOP);
         }
     }
 
@@ -336,8 +329,9 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
         moon.move();
 
         // -----  Draw moon satellite
-//        mygl.setColor(0, 1, 0);
-//        moonSat.draw(gl);
+        mygl.setColor(0, 1, 0);
+        moonSat.draw(gl);
+        moonSat.move();
     }
 
 
