@@ -29,9 +29,9 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
     private int maxVerts = 2048;                        // max. amount Vertices in Vertex-Array
 
     // ------ Display settings
-    private float xleft = -50, xright = 50;
+    private float xleft = -400, xright = 400;
     private float ybottom, ytop;
-    private float znear = -100, zfar = 1000;
+    private float znear = -500, zfar = 1000;
 
     // ------ Projection matrix
     private float elevation = 10;
@@ -40,25 +40,52 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
 
     // ------ Earth data
     private RotKoerper rotK;
-    private final static double g = 9.81e-6;                // Gravity acceleration
-    private final static double eG = 6.6726e-29;            // Gravitation constant
-    private final static double eR = 6.371;                 // Earth radius
-    private final static double eM = 5.976e24;              // Earth mass
-    private final static double dt = 60;                    // time step
+    private double g = 9.81e-6;                // Gravity acceleration
+    private double eG = 6.6726e-29;            // Gravitation constant
+    private double eR = 6.371;                 // Earth radius
+    private double eM = 5.976e24;              // Earth mass
+    private double dt = 60;                    // time step
 
-    // ------ Satellite data
+    // ------ Stationary StationarySatellite data
+    private StationarySatellite stationarySat;
     private double satX = 0, satY = 0, satZ = 42;
     private double satVX = 0.002, satVY = 0.001, satVZ = 0;
     private double sR = 42.050;
 
-    // ---------  Satellite Class  --------------------------
-    private class Satellite extends Dynamics {
-        double[] X = {satX, satY, satZ, satVX, satVY, satVZ};
+    // ------ Moon data
+    private Moon moon;
+    private double moonX = 307.357885, moonY = 0, moonZ = -230.855996;
+    private double moonVX = -0.000612, moonVY = 0, moonVZ = -0.000814;
+    private double moonM = 7.35e22;
+    private double moonR = 1.738;
+    private double moonTrailR = 384.4;
+
+    // ----- Moon StationarySatellite data
+    private MoonSatellite moonSat;
+    private double moonSatX = 0, moonSatY = 0, moonSatZ = 6.551;
+    private double moonSatVX = 0.01095, moonSatVY = 0, moonSatVZ = 0;
+
+
+    // ---------  Stationary StationarySatellite Class  --------------------------
+    private class StationarySatellite extends Dynamics {
+        double[] X;
+        double R;
+
+        public StationarySatellite(double x, double y, double z, double vx, double vy, double vz, double r) {
+            X = new double[6];
+            X[0] = x;
+            X[1] = y;
+            X[2] = z;
+            X[3] = vx;
+            X[4] = vy;
+            X[5] = vz;
+            R = r;
+        }
 
         void draw(GL3 gl) {
             mygl.pushM();
-            mygl.multM(gl, Mat4.translate((float)sat.X[0], (float)sat.X[1], (float)sat.X[2]));
-            rotK.zeichneKugel(gl, 1, 20, 20, true);
+            mygl.multM(gl, Mat4.translate((float) X[0], (float) X[1], (float) X[2]));
+            rotK.zeichneKugel(gl, (float)R, 20, 20, true);
             mygl.popM(gl);
         }
 
@@ -95,7 +122,120 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
         }
     }
 
-    private Satellite sat = new Satellite();
+    // ---------  Moon Class  --------------------------
+    private class Moon extends Dynamics {
+        double[] X;
+        double R;
+
+        public Moon(double x, double y, double z, double vx, double vy, double vz, double r) {
+            X = new double[6];
+            X[0] = x;
+            X[1] = y;
+            X[2] = z;
+            X[3] = vx;
+            X[4] = vy;
+            X[5] = vz;
+            R = r;
+        }
+
+        void draw(GL3 gl) {
+            mygl.pushM();
+            mygl.multM(gl, Mat4.translate((float) X[0], (float) X[1], (float) X[2]));
+            rotK.zeichneKugel(gl, (float)R, 20, 20, true);
+            mygl.popM(gl);
+        }
+
+        void move() {
+            X = runge(X, dt);
+        }
+
+        @Override
+        public double[] f(double[] x) {
+            double r3 = Math.pow(moonTrailR, 3);
+            double GM = -((eG * eM) / r3);
+
+            return new double[]{
+                x[3],   //vx
+                0,      //vy
+                x[5],   //vz
+                GM * x[0],
+                0,
+                GM * x[2]
+            };
+        }
+
+        void berechneBahn(GL3 gl){
+            double[] X = { moonX, moonY, moonZ, moonVX, moonVY, moonVZ };
+
+            for (int j = 0; j < 20; j++) {
+                mygl.rewindBuffer(gl);
+
+                for (int i = 0; i < 2000; i++) {
+                    X = runge(X, dt);
+                    mygl.putVertex((float) X[0], (float) X[1], (float) X[2]);
+                }
+
+                mygl.copyBuffer(gl);
+                mygl.drawArrays(gl, GL3.GL_LINES);
+            }
+        }
+    }
+
+    // ---------  Moon Class  --------------------------
+    private class MoonSatellite extends Dynamics {
+        double[] X;
+        double R;
+
+        public MoonSatellite(double x, double y, double z, double vx, double vy, double vz, double r) {
+            X = new double[6];
+            X[0] = x;
+            X[1] = y;
+            X[2] = z;
+            X[3] = vx;
+            X[4] = vy;
+            X[5] = vz;
+            R = r;
+        }
+
+        void draw(GL3 gl) {
+            mygl.pushM();
+            mygl.multM(gl, Mat4.translate((float) X[0], (float) X[1], (float) X[2]));
+            rotK.zeichneKugel(gl, (float)R, 20, 20, true);
+            mygl.popM(gl);
+        }
+
+        void move() {
+            X = runge(X, dt);
+        }
+
+        @Override
+        public double[] f(double[] x) {
+            double r3 = Math.pow(sR, 3);
+            double GM = -((eG * eM) / r3);
+
+            return new double[]{
+                x[3],   //vx
+                x[4],   //vy
+                x[5],   //vz
+                GM * x[0],
+                GM * x[1],
+                GM * x[2]
+            };
+        }
+
+        void berechneBahn(GL3 gl){
+            double[] X = {satX, satY, sR, satVX, satVY, satVZ };
+            mygl.rewindBuffer(gl);
+
+            for(int i = 0; i<1500; i++){
+                X = runge(X, dt);
+                mygl.putVertex((float) X[0], (float) X[1], (float) X[2]);
+            }
+
+            mygl.copyBuffer(gl);
+            mygl.drawArrays(gl, GL3.GL_LINE_LOOP);
+        }
+    }
 
     //  ---------  Methoden  --------------------------------
 
@@ -136,6 +276,9 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
         gl.glClearColor(0, 0, 0, 0);        // Background color
 
         rotK = new RotKoerper(mygl);
+        stationarySat = new StationarySatellite(satX, satY, satZ, satVX, satVY, satVZ, 1);
+        moon = new Moon(moonX, moonY, moonZ, moonVX, moonVY, moonVZ, moonR);
+        moonSat = new MoonSatellite(moonSatX, moonSatY, moonSatZ, moonSatVX, moonSatVY, moonSatVZ, 1.5);
 
         gl.glEnable(GL3.GL_POLYGON_OFFSET_FILL);
         gl.glPolygonOffset(1, 1);
@@ -165,8 +308,8 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
         mygl.setShadingLevel(gl, 0);
 
         mygl.setM(gl, Mat4.ID);
-        mygl.setLightPosition(gl, 0,0,10);
         mygl.setM(gl, Mat4.lookAt(R.transform(A), B, R.transform(up)));
+        mygl.setLightPosition(gl, 0,0,10);
         mygl.setShadingLevel(gl,0);
 
         // -----  Set shading and lightning
@@ -178,33 +321,28 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
         mygl.setColor(0, 0, 1);
         rotK.zeichneKugel(gl, (float) eR, 20,20, true);
 
-        // -----  Draw satellite trail
+        // -----  Draw stationary satellite trail
         mygl.setColor(1, 0, 0);
-        sat.berechneBahn(gl);
+        stationarySat.berechneBahn(gl);
 
         // -----  Draw satellite
-        mygl.setColor(1, 0, 0);
-        sat.draw(gl);
-        sat.move();
+        stationarySat.draw(gl);
+        stationarySat.move();
+
+        // -----  Draw moon
+        mygl.setColor(0.8f, 0.8f, 0.8f);
+        moon.berechneBahn(gl);
+        moon.draw(gl);
+        moon.move();
+
+        // -----  Draw moon satellite
+//        mygl.setColor(0, 1, 0);
+//        moonSat.draw(gl);
     }
 
 
     @Override
-    public void keyTyped(KeyEvent e) {
-        char key = e.getKeyChar();
-
-        switch (key) {
-            case '+':
-                dist++;
-                break;
-            case '-':
-                dist--;
-                break;
-
-            default:
-                break;
-        }
-    }
+    public void keyTyped(KeyEvent e) {}
 
     @Override
     public void keyPressed(KeyEvent e) {
