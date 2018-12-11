@@ -26,7 +26,7 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
     private GLCanvas canvas;                            // OpenGL Window
     private int programId;                              // OpenGL-Id
     private MyGLBase1 mygl;                             // Helper functions
-    private int maxVerts = 8192;                        // max. amount Vertices in Vertex-Array
+    private int maxVerts = 16384;                        // max. amount Vertices in Vertex-Array
 
     // ------ Display settings
     private float xleft = -50, xright = 50;
@@ -53,6 +53,7 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         double[] x;
         int width;
         int height;
+        Vec3[][] wallBlocks;
         Quader block;
 
         public Wall(double[] x, int w, int h, Quader block) {
@@ -62,14 +63,30 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
             this.block = block;
         }
 
-        void drawWall(GL3 gl) {
+        void initializeBlockPositions() {
             double rowPos = x[1];
-            boolean isNext = false;
+            int rows = (int)(height/x[1]);
+            int cols = (int)(width/x[0]);
+            this.wallBlocks = new Vec3[rows][cols];
 
-            while (rowPos <= height) {
+            for (int i = 0; i < rows; i++) {
                 double colPos = x[0];
 
-                while (colPos <= width) {
+                for (int j = 0; j < cols; j++) {
+                    wallBlocks[i][j] = new Vec3((float)colPos, (float)rowPos, (float)x[2]);
+
+                    colPos += block.getA();
+                }
+
+                rowPos += block.getC();
+            }
+        }
+
+        void drawWall(GL3 gl) {
+            boolean isNext = false;
+
+            for (Vec3[] wallCols : wallBlocks) {
+                for (Vec3 wallBlock : wallCols) {
                     // Change color for each Square
                     if (isNext) {
                         mygl.setColor(1, 0, 0);
@@ -81,22 +98,22 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
 
                     // Draw quader
                     mygl.pushM();
-                    mygl.multM(gl, Mat4.translate((float)colPos, (float)rowPos, (float)x[2]));
+                    mygl.multM(gl, Mat4.translate(wallBlock.x, wallBlock.y, wallBlock.z));
                     block.drawQuader(gl);
                     mygl.popM(gl);
-
-                    colPos += block.getA();
                 }
-                rowPos += block.getC();
             }
         }
 
         void move() {
+            // Position
+
+            // Rotation
             x = runge(x, dt);
         }
 
         void reset() {
-            // @todo: reset wall
+            this.initializeBlockPositions();
         }
 
         @Override
@@ -169,9 +186,11 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
 
         dice = new Quader(mygl, 2, 2, 2);
         diceWall = new Wall(wallStartPos, 25, 15, dice);
+        diceWall.initializeBlockPositions();
 
         quader = new Quader(mygl, 2, 1, 1);
         quaderWall = new Wall(wallStartPos, 25, 15, quader);
+        quaderWall.initializeBlockPositions();
 
         // Initialize animation with 40 fps and start (Display method will be called 40 times per frame)
         FPSAnimator anim = new FPSAnimator(canvas, 40, true);
