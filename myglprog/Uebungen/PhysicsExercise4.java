@@ -17,7 +17,7 @@ public class PhysicsExercise4 implements WindowListener, GLEventListener, KeyLis
     //  ---------  Global data  ---------------------------
 
     // ------ General data
-    private String windowTitle = "JOGL-Application";
+    private String windowTitle = "Physics Exercise 4 - Satellites and Moon";
     private int windowWidth = 800;
     private int windowHeight = 600;
     private String vShader = MyShaders.vShader2;        // Vertex-Shader
