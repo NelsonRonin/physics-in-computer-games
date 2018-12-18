@@ -3,60 +3,76 @@ package Uebungen;
 import ch.fhnw.util.math.Vec3;
 import com.jogamp.opengl.GL3;
 
-public class Quader {
+public class Quader extends GyroDynamics {
     private MyGLBase1 mygl;
+
+    // Side lengths
     private double a;
     private double b;
     private double c;
 
-    public Quader(MyGLBase1 mygl, double a, double b, double c) {
+    // Quader floor edges
+    private Vec3 A;
+    private Vec3 B;
+    private Vec3 C;
+    private Vec3 D;
+
+    // Quader roof edges
+    private Vec3 E;
+    private Vec3 F;
+    private Vec3 G;
+    private Vec3 H;
+
+    public Quader(MyGLBase1 mygl, double a, double b, double c, double[] IF) {
+        // Set inertial force
+        super(IF[0], IF[1], IF[2]);
+
         this.mygl = mygl;
         this.a = a;
         this.b = b;
         this.c = c;
-    }
 
-    public void drawQuader(GL3 gl) {
+        // Prepare half lengths for edges
         double a2 = a * 0.5;
         double b2 = b * 0.5;
         double c2 = c * 0.5;
 
         // Floor area edges
-        Vec3 A = new Vec3(a2, -b2, c2);
-        Vec3 B = new Vec3(a2, -b2, -c2);
-        Vec3 C = new Vec3(-a2, -b2, -c2);
-        Vec3 D = new Vec3(-a2, -b2, c2);
+        A = new Vec3(a2, -b2, c2);
+        B = new Vec3(a2, -b2, -c2);
+        C = new Vec3(-a2, -b2, -c2);
+        D = new Vec3(-a2, -b2, c2);
 
         // Roof area edges
-        Vec3 E = new Vec3(a2, b2, c2);
-        Vec3 F = new Vec3(a2, b2, -c2);
-        Vec3 G = new Vec3(-a2, b2, -c2);
-        Vec3 H = new Vec3(-a2, b2, c2);
+        E = new Vec3(a2, b2, c2);
+        F = new Vec3(a2, b2, -c2);
+        G = new Vec3(-a2, b2, -c2);
+        H = new Vec3(-a2, b2, c2);
+    }
+
+    public void drawQuader(GL3 gl) {
+        mygl.rewindBuffer(gl);
 
         // Draw floor
-        mygl.setNormal(0, -1, 0);
-        drawArea(A, B, C, D);
+        putArea(A, B, C, D, new Vec3(0, -1, 0));
         // Draw roof
-        mygl.setNormal(0, 1, 0);
-        drawArea(E, F, G, H);
+        putArea(E, F, G, H, new Vec3(0, 1, 0));
         // Draw front
-        mygl.setNormal(1, 0, 0);
-        drawArea(A, B, F, E);
+        putArea(A, B, F, E, new Vec3(1, 0, 0));
         // Draw back
-        mygl.setNormal(-1, 0, 0);
-        drawArea(D, C, G, H);
+        putArea(D, C, G, H, new Vec3(-1, 0, 0));
         // Draw left
-        mygl.setNormal(0, 0, 1);
-        drawArea(A, D, H, E);
+        putArea(A, D, H, E, new Vec3(0, 0, 1));
         // Draw right
-        mygl.setNormal(0, 0, -1);
-        drawArea(B, C, G, F);
+        putArea(B, C, G, F, new Vec3(0, 0, -1));
 
         mygl.copyBuffer(gl);
         mygl.drawArrays(gl, GL3.GL_TRIANGLES);
     }
 
-    private void drawArea(Vec3 A, Vec3 B, Vec3 C, Vec3 D) {
+    private void putArea(Vec3 A, Vec3 B, Vec3 C, Vec3 D, Vec3 n) {
+        mygl.setNormal(n.x, n.y, n.z);
+
         mygl.putVertex(A.x, A.y, A.z);
         mygl.putVertex(B.x, B.y, B.z);
         mygl.putVertex(C.x, C.y, C.z);

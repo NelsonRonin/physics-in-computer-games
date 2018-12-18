@@ -11,6 +11,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.util.Random;
 
 public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyListener {
 
@@ -26,12 +27,12 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
     private GLCanvas canvas;                            // OpenGL Window
     private int programId;                              // OpenGL-Id
     private MyGLBase1 mygl;                             // Helper functions
-    private int maxVerts = 16384;                        // max. amount Vertices in Vertex-Array
+    private int maxVerts = 2048;                        // max. amount Vertices in Vertex-Array
 
     // ------ Display settings
     private float xleft = -50, xright = 50;
     private float ybottom, ytop;
-    private float znear = -100, zfar = 1000;
+    private float znear = -200, zfar = 1000;
 
     // ------ Projection matrix
     private float elevation = 20;
@@ -41,19 +42,41 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
     // ------ Wall data
     private boolean isDiceWall = true;
     private boolean hasExplosionStarted = false;
-    private double dt = 0.001;
+    private double dt = 0.1;
 
     private Wall diceWall;
     private Wall quaderWall;
     private Quader dice;
     private Quader quader;
 
-    //  ---------  Wall class  ------------------------------
-    class Wall extends Dynamics {
+    // ------ Explosion data
+    private ExplosionCircle explosionCircle;
+    private float explotionCenterX = 20;
+    private float explotionCenterY = 20;
+    private float explotionRadius = 10;
+    private double[] IF = new double[]{ 1, 2, 1 };
+    private float blockVXmin, blockVXmax;
+    private float blockVYmin, blockVYmax;
+    private float blockVZmin, blockVZmax;
+
+    // Gravity
+    private boolean isGravityOn;
+    private final float g = 9.81f;
+
+    /**
+     * Wall class
+     * ----------------------------------------------------------------
+     * - draws a wall with given blocks and saves it's positions
+     * - is used to make blocks move on explosion
+     * - resets initial wall (blocks) position
+     */
+    private class Wall {
         double[] x;
         int width;
         int height;
-        Vec3[][] wallBlocks;
+        Vec3[][] wallBlocksPos;
+        Vec3[][] wallBlocksV;
+        boolean[][] wallBlocksMoving;
         Quader block;
 
         public Wall(double[] x, int w, int h, Quader block) {
@@ -67,13 +90,17 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
             double rowPos = x[1];
             int rows = (int)(height/x[1]);
             int cols = (int)(width/x[0]);
-            this.wallBlocks = new Vec3[rows][cols];
+            wallBlocksPos = new Vec3[rows][cols];
+            wallBlocksV = new Vec3[rows][cols];
+            wallBlocksMoving = new boolean[rows][cols];
 
             for (int i = 0; i < rows; i++) {
                 double colPos = x[0];
 
                 for (int j = 0; j < cols; j++) {
-                    wallBlocks[i][j] = new Vec3((float)colPos, (float)rowPos, (float)x[2]);
+                    wallBlocksPos[i][j] = new Vec3((float)colPos, (float)rowPos, (float)x[2]);
+                    wallBlocksV[i][j] = getRandomVelocity();
+                    wallBlocksMoving[i][j] = false;
 
                     colPos += block.getA();
                 }
@@ -85,7 +112,7 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         void drawWall(GL3 gl) {
             boolean isNext = false;
 
-            for (Vec3[] wallCols : wallBlocks) {
+            for (Vec3[] wallCols : wallBlocksPos) {
                 for (Vec3 wallBlock : wallCols) {
                     // Change color for each Square
                     if (isNext) {
@@ -106,23 +133,105 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         }
 
         void move() {
-            // Position
+            for (int i = 0; i < wallBlocksPos.length; i++) {
+                for (int j = 0; j < wallBlocksPos[i].length; j++) {
+                    if (
+                        (wallBlocksMoving[i][j] || explosionCircle.isBlockInsideExplosion(wallBlocksPos[i][j])) &&
+                        !hasReachedFloor(wallBlocksPos[i][j])
+                    ) {
+                        // Throw block (MOVEMENT)
+                        wallBlocksPos[i][j] = wallBlocksPos[i][j].add(wallBlocksV[i][j].scale((float)dt));
+                        wallBlocksMoving[i][j] = true;
 
-            // Rotation
-            x = runge(x, dt);
+                        if (isGravityOn) {
+                            wallBlocksV[i][j] = wallBlocksV[i][j].add(new Vec3(0, -g, 0).scale((float)dt));
+                        }
+
+                        // Turn block (ROTATION)
+                        // todo: add rotation (gyro dynamics)
+
+                    }
+                }
+            }
         }
 
         void reset() {
             this.initializeBlockPositions();
         }
+    }
 
-        @Override
-        double[] f(double[] x) {
-            return new double[] {};
+    /**
+     * Explosion circle class
+     * ----------------------------------------------------------------
+     * Defines the range of the explosion on the wall
+     * and checks if a given block is inside the explosion range
+     */
+    private class ExplosionCircle {
+        public Vec3 centerPosition;
+        public float radius;
+
+        public ExplosionCircle(Vec3 pos, float r) {
+            centerPosition = pos;
+            radius = r;
+        }
+
+        public boolean isBlockInsideExplosion(Vec3 blockPos) {
+            // todo: also check edges of block (not only middle point
+
+            // is center point of block inside circle
+            return centerPosition.distance(blockPos) <= radius;
         }
     }
 
     //  ---------  Methoden  --------------------------------
+
+    /**
+     * Get a random start velocity for a block in wall
+     *
+     * @return random vector
+     */
+    private Vec3 getRandomVelocity() {
+        if (isGravityOn) {
+            blockVXmin = 8; blockVXmax = 16;
+            blockVYmin = 8; blockVYmax = 16;
+            blockVZmin = 12; blockVZmax = 25;
+        } else {
+            blockVXmin = 0; blockVXmax = 2;
+            blockVYmin = 0; blockVYmax = 2;
+            blockVZmin = 2; blockVZmax = 5;
+        }
+
+        return new Vec3(
+            getRandomNumberInRange(blockVXmin, blockVXmax),
+            getRandomNumberInRange(blockVYmin, blockVYmax),
+            getRandomNumberInRange(blockVZmin, blockVZmax)
+        );
+    }
+
+    /**
+     * Get random number in given range
+     *
+     * @param min lower range limit
+     * @param max upper range limit
+     * @return    random number
+     */
+    private static float getRandomNumberInRange(float min, float max) {
+        if (min >= max) {
+            throw new IllegalArgumentException("max must be greater than min");
+        }
+
+        return min + new Random().nextFloat() * (max - min);
+    }
+
+    /**
+     * Find out if current block has reached floor (then stop it's animation/movement
+     *
+     * @param blockPos position of current block in wall
+     * @return         if block has reached floor
+     */
+    private static boolean hasReachedFloor(Vec3 blockPos) {
+        return blockPos.y <= 0;
+    }
 
     /**
      * @param gl gl object
@@ -141,6 +250,18 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         mygl.putVertex(x2, y2, z2);
         mygl.copyBuffer(gl);
         mygl.drawArrays(gl, GL3.GL_LINE_STRIP);
+    }
+
+    /**
+     * Draw a blue line to visualize, that gravity is set on
+     *
+     * @param gl gl object
+     */
+    private void drawGravityArrow(GL3 gl) {
+        mygl.setColor(0, 0, 1);
+        drawLine(gl, -10, 20, 2, -10, 10, 2);
+        drawLine(gl, -10, 10, 2, -11, 11, 2);
+        drawLine(gl, -10, 10, 2, -9, 11, 2);
     }
 
     // Constructor
@@ -182,15 +303,21 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         gl.glEnable(GL3.GL_POLYGON_OFFSET_FILL);
         gl.glPolygonOffset(1, 1);
 
-        double[] wallStartPos = new double[] {1, 1, 1};
+        double wallZ = 1;
+        double[] wallStartPos = new double[] {1, 1, wallZ};
 
-        dice = new Quader(mygl, 2, 2, 2);
+        dice = new Quader(mygl, 2, 2, 2, IF);
         diceWall = new Wall(wallStartPos, 25, 15, dice);
         diceWall.initializeBlockPositions();
 
-        quader = new Quader(mygl, 2, 1, 1);
-        quaderWall = new Wall(wallStartPos, 25, 15, quader);
+        quader = new Quader(mygl, 2, 1, 1, IF);
+        quaderWall = new Wall(wallStartPos, 25, 21, quader);
         quaderWall.initializeBlockPositions();
+
+        Vec3 explotionCenterPos = new Vec3(explotionCenterX, explotionCenterY, wallZ);
+        explosionCircle = new ExplosionCircle(explotionCenterPos, explotionRadius);
+
+        isGravityOn = false;
 
         // Initialize animation with 40 fps and start (Display method will be called 40 times per frame)
         FPSAnimator anim = new FPSAnimator(canvas, 40, true);
@@ -223,6 +350,11 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         drawLine(gl, 0, 0, 0, 50, 0, 0);     // x-axe
         drawLine(gl, 0, 0, 0, 0, 50, 0);     // y-axe
         drawLine(gl, 0, 0, 0, 0, 0, 50);     // z-axe
+
+        // ------ Draw gravity arrow if set
+        if (isGravityOn) {
+            drawGravityArrow(gl);
+        }
 
         // -----  Set shading and lightning
         mygl.setShadingParam(gl, 0.2f, 0.6f);
@@ -257,14 +389,8 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
             case 'x':
                 isDiceWall = !isDiceWall;
                 break;
-            // Capital V: Abschussgeschwindigkeit vergrössern
-            case '+':
-                dist += 1;
-                canvas.repaint();
-                break;
-            // Lower v: Abschussgeschwindigkeit verkleinern
-            case '-':
-                dist -= 1;
+            case 'g':
+                isGravityOn = !isGravityOn;
                 break;
             default:
                 break;
