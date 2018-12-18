@@ -27,7 +27,7 @@ public class GyroTest implements WindowListener, GLEventListener, KeyListener {
     private int maxVerts = 2048;                                 // max. Anzahl Vertices im Vertex-Array
     private RotKoerper rotk;                                     // Rotationskoerper
 
-    private float xleft = -3, xright = 3;                        // ViewingVolume
+    private float xleft = -1, xright = 1;                        // ViewingVolume
     private float ybottom, ytop;
     private float znear = -100, zfar = 1000;
 
@@ -40,9 +40,9 @@ public class GyroTest implements WindowListener, GLEventListener, KeyListener {
 
     // Gyro data
     private double I1 = 1, I2 = 2, I3 = 1;
-    private double dt = 0.005;
+    private double dt = 0.001;
 
-    private GyroDynamics gyro = new GyroDynamics(I1, I2, I3);
+    private Gyro gyro = new Gyro(I1, I2, I3);
 
     //  ---------  Methoden  --------------------------------
 
@@ -75,6 +75,36 @@ public class GyroTest implements WindowListener, GLEventListener, KeyListener {
         mygl.drawArrays(gl, GL3.GL_LINES);
     }
 
+    //  ----------  Gyro class   ------------------------------
+    public class Gyro extends GyroDynamics {
+        float r1 = 0.2f, r2 = 0.04f, s1 = 0.03f, s2 = 0.04f;
+        float d1 = 0.15f, d2 = 0.25f;
+
+        public Gyro (double I1, double I2, double I3) {
+            super(I1, I2, I3);
+        }
+
+        public void draw(GL3 gl) {
+            mygl.pushM();
+            mygl.multM(gl, Mat4.translate(0, d1, 0));
+            rotk.zeichneZylinder(gl, r1, s1, 10, 10, true);
+            mygl.multM(gl, Mat4.translate(0, -(d1 + d2), 0));
+            rotk.zeichneZylinder(gl, r2, s2, 10, 10, true);
+            rotk.zeichneZylinder(gl, 0.3f * r2, d1 + d2, 10, 10, true);
+            mygl.popM(gl);
+        }
+
+        public Vec3 torque(double[] x) {
+            Mat4 rGyro = getRotation();
+            Vec3 F = new Vec3(50, 0, 0);
+            Mat4 rInv = rGyro.transpose();
+            Vec3 FF = rInv.transform(F);
+            Vec3 r = new Vec3(0, 1, 0);
+
+            return r.cross(FF);
+        }
+    }
+
     //  ----------  OpenGL-Events   ---------------------------
 
     @Override
@@ -94,7 +124,7 @@ public class GyroTest implements WindowListener, GLEventListener, KeyListener {
         anim.start();
 
         rotk = new RotKoerper(mygl);
-        gyro.setState(2, 10, 0, 1, 0, 0, 0);
+        gyro.setState(0, 20, 0, 1, 0, 0, 0);
     }
 
 
@@ -129,13 +159,13 @@ public class GyroTest implements WindowListener, GLEventListener, KeyListener {
         mygl.setColor(1, 1, 1);
 
         // Draw gyro
-        float r = 1, s = 0.5f;
+        mygl.multM(gl, Mat4.rotate(-90, 0, 0, 1));
         Mat4 Rgyro = gyro.getRotation();
-        mygl.multM(gl, Mat4.translate(0, 0.5f * s, 0));
         mygl.multM(gl, Rgyro);
-        rotk.zeichneZylinder(gl, r, s, 20, 20, true);
+        gyro.draw(gl);
 
-        gyro.move(dt);
+        for (int i = 0; i < 10; i++)
+            gyro.move(dt);
     }
 
 
