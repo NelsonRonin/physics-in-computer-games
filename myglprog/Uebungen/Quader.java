@@ -3,8 +3,10 @@ package Uebungen;
 import ch.fhnw.util.math.Vec3;
 import com.jogamp.opengl.GL3;
 
-public class Quader extends GyroDynamics {
+public class Quader {
     private MyGLBase1 mygl;
+
+    private Vec3 rotationAxis;
 
     // Side lengths
     private double a;
@@ -23,10 +25,23 @@ public class Quader extends GyroDynamics {
     private Vec3 G;
     private Vec3 H;
 
-    public Quader(MyGLBase1 mygl, double a, double b, double c, double[] IF) {
-        // Set inertial force
-        super(IF[0], IF[1], IF[2]);
+    public Quader(MyGLBase1 mygl, double a, double b, double c, Vec3 rotationAxis) {
+        this.mygl = mygl;
+        this.a = a;
+        this.b = b;
+        this.c = c;
 
+        this.rotationAxis = rotationAxis;
+
+        // Prepare half lengths for edges
+        double a2 = a * 0.5;
+        double b2 = b * 0.5;
+        double c2 = c * 0.5;
+
+        setEdges(a, b, c, a2, b2, c2);
+    }
+
+    public Quader(MyGLBase1 mygl, double a, double b, double c) {
         this.mygl = mygl;
         this.a = a;
         this.b = b;
@@ -37,17 +52,7 @@ public class Quader extends GyroDynamics {
         double b2 = b * 0.5;
         double c2 = c * 0.5;
 
-        // Floor area edges
-        A = new Vec3(a2, -b2, c2);
-        B = new Vec3(a2, -b2, -c2);
-        C = new Vec3(-a2, -b2, -c2);
-        D = new Vec3(-a2, -b2, c2);
-
-        // Roof area edges
-        E = new Vec3(a2, b2, c2);
-        F = new Vec3(a2, b2, -c2);
-        G = new Vec3(-a2, b2, -c2);
-        H = new Vec3(-a2, b2, c2);
+        setEdges(a, b, c, a2, b2, c2);
     }
 
     public void drawQuader(GL3 gl) {
@@ -82,7 +87,22 @@ public class Quader extends GyroDynamics {
         mygl.putVertex(A.x, A.y, A.z);
     }
 
+    private void setEdges(double a, double b, double c, double a2, double b2, double c2) {
+        // Floor area edges
+        A = new Vec3(a2, -b2, c2);
+        B = new Vec3(a2, -b2, -c2);
+        C = new Vec3(-a2, -b2, -c2);
+        D = new Vec3(-a2, -b2, c2);
+
+        // Roof area edges
+        E = new Vec3(a2, b2, c2);
+        F = new Vec3(a2, b2, -c2);
+        G = new Vec3(-a2, b2, -c2);
+        H = new Vec3(-a2, b2, c2);
+    }
+
     public double getA() { return a; }
     public double getB() { return b; }
     public double getC() { return c; }
+    public Vec3 getRotationAxis() { return rotationAxis; }
 }

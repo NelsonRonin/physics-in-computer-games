@@ -44,24 +44,55 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
     private boolean hasExplosionStarted = false;
     private double dt = 0.1;
 
-    private Wall diceWall;
-    private Wall quaderWall;
-    private Quader dice;
-    private Quader quader;
-
     // ------ Explosion data
     private ExplosionCircle explosionCircle;
     private float explotionCenterX = 20;
-    private float explotionCenterY = 20;
+    private float explotionCenterY = 15;
     private float explotionRadius = 10;
-    private double[] IF = new double[]{ 1, 2, 1 };
+    // Velocity ranges
     private float blockVXmin, blockVXmax;
     private float blockVYmin, blockVYmax;
     private float blockVZmin, blockVZmax;
 
-    // Gravity
+    // ------ Dice
+    private Wall diceWall;
+    private Quader dice;
+    // Rotation data
+    private double[] IdF = new double[]{ 1, 2, 1 };
+
+    // ------ Quader
+    private Wall quaderWall;
+    private Quader quader;
+    // Gyro data
+    private double[] IqF = new double[]{ 1, 2, 1 };
+
+    // ------ Gravity
     private boolean isGravityOn;
     private final float g = 9.81f;
+
+    /**
+     * Gyro Dynamics
+     */
+    public class Gyro extends GyroDynamics {
+
+        public Gyro (double I1, double I2, double I3) {
+            super(I1, I2, I3);
+        }
+
+        public Vec3 torque(double[] x) {
+            Mat4 rGyro = getRotation();
+            Vec3 F = new Vec3(1, 0, 0);
+            Mat4 rInv = rGyro.transpose();
+            Vec3 FF = rInv.transform(F);
+            Vec3 r = new Vec3(
+                quaderWall.block.getA(),
+                quaderWall.block.getB(),
+                quaderWall.block.getC()
+            );
+
+            return r.cross(FF);
+        }
+    }
 
     /**
      * Wall class
@@ -77,7 +108,11 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         Vec3[][] wallBlocksPos;
         Vec3[][] wallBlocksV;
         boolean[][] wallBlocksMoving;
+        float[][] rotationAngle;
+        float[][] rotationV;
+        Quader[][] blocks;
         Quader block;
+        Gyro[][] gyros;
 
         public Wall(double[] x, int w, int h, Quader block) {
             this.x = x;
@@ -86,21 +121,37 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
             this.block = block;
         }
 
-        void initializeBlockPositions() {
+        void initializeBlocks() {
             double rowPos = x[1];
             int rows = (int)(height/x[1]);
             int cols = (int)(width/x[0]);
             wallBlocksPos = new Vec3[rows][cols];
             wallBlocksV = new Vec3[rows][cols];
             wallBlocksMoving = new boolean[rows][cols];
+            rotationAngle = new float[rows][cols];
+            rotationV = new float[rows][cols];
+            blocks = new Quader[rows][cols];
+            gyros = new Gyro[rows][cols];
 
             for (int i = 0; i < rows; i++) {
                 double colPos = x[0];
 
                 for (int j = 0; j < cols; j++) {
                     wallBlocksPos[i][j] = new Vec3((float)colPos, (float)rowPos, (float)x[2]);
-                    wallBlocksV[i][j] = getRandomVelocity();
+                    wallBlocksV[i][j] = getRandomThrowVelocity();
                     wallBlocksMoving[i][j] = false;
+
+                    rotationAngle[i][j] = 0;
+                    rotationV[i][j] = (float)Math.random() * 4 + 1;
+                    gyros[i][j] = new Gyro(1, 1, 0.6);
+
+                    blocks[i][j] = new Quader(mygl, block.getA(), block.getB(), block.getC(),
+                        new Vec3(Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5));
+
+                    double  w1 = getRandomNumberInRange(10,40);
+                    double  w2 = getRandomNumberInRange(10,40);
+                    double  w3 = getRandomNumberInRange(10,40);
+                    gyros[i][j].setState(w1, w2, w3, 1, 0, 0, 0);
 
                     colPos += block.getA();
                 }
@@ -112,8 +163,8 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         void drawWall(GL3 gl) {
             boolean isNext = false;
 
-            for (Vec3[] wallCols : wallBlocksPos) {
-                for (Vec3 wallBlock : wallCols) {
+            for (int i = 0; i < wallBlocksPos.length; i++) {
+                for (int j = 0; j < wallBlocksPos[i].length; j++) {
                     // Change color for each Square
                     if (isNext) {
                         mygl.setColor(1, 0, 0);
@@ -125,9 +176,30 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
 
                     // Draw quader
                     mygl.pushM();
-                    mygl.multM(gl, Mat4.translate(wallBlock.x, wallBlock.y, wallBlock.z));
+                    mygl.multM(gl, Mat4.translate(wallBlocksPos[i][j].x, wallBlocksPos[i][j].y, wallBlocksPos[i][j].z));
+
+                    // rotation
+                    if (hasExplosionStarted && wallBlocksMoving[i][j] && !hasReachedFloor(wallBlocksPos[i][j])) {
+                        if (isDiceWall) {
+                            Vec3 rotAxis = blocks[i][j].getRotationAxis();
+                            mygl.multM(gl, Mat4.rotate(rotationAngle[i][j], rotAxis.x, rotAxis.y, rotAxis.z));
+                        } else {
+                            Mat4 Rgyro = gyros[i][j].getRotation();
+                            mygl.multM(gl, Rgyro);
+                            gyros[i][j].move(0.001);
+                        }
+                    }
+
                     block.drawQuader(gl);
                     mygl.popM(gl);
+                }
+            }
+
+            if (hasExplosionStarted && isDiceWall) {
+                for (int i = 0; i < wallBlocksPos.length; i++) {
+                    for (int j = 0; j < wallBlocksPos[i].length; j++) {
+                        rotationAngle[i][j] += rotationV[i][j];
+                    }
                 }
             }
         }
@@ -156,7 +228,7 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         }
 
         void reset() {
-            this.initializeBlockPositions();
+            this.initializeBlocks();
         }
     }
 
@@ -190,7 +262,7 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
      *
      * @return random vector
      */
-    private Vec3 getRandomVelocity() {
+    private Vec3 getRandomThrowVelocity() {
         if (isGravityOn) {
             blockVXmin = 8; blockVXmax = 16;
             blockVYmin = 8; blockVYmax = 16;
@@ -229,8 +301,8 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
      * @param blockPos position of current block in wall
      * @return         if block has reached floor
      */
-    private static boolean hasReachedFloor(Vec3 blockPos) {
-        return blockPos.y <= 0;
+    private boolean hasReachedFloor(Vec3 blockPos) {
+        return this.isGravityOn && blockPos.y <= 0;
     }
 
     /**
@@ -306,13 +378,13 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         double wallZ = 1;
         double[] wallStartPos = new double[] {1, 1, wallZ};
 
-        dice = new Quader(mygl, 2, 2, 2, IF);
+        dice = new Quader(mygl, 2, 2, 2, new Vec3(Math.random() + 0.5, Math.random() + 0.5, Math.random() + 0.5));
         diceWall = new Wall(wallStartPos, 25, 15, dice);
-        diceWall.initializeBlockPositions();
+        diceWall.initializeBlocks();
 
-        quader = new Quader(mygl, 2, 1, 1, IF);
+        quader = new Quader(mygl, 2, 1, 1);
         quaderWall = new Wall(wallStartPos, 25, 21, quader);
-        quaderWall.initializeBlockPositions();
+        quaderWall.initializeBlocks();
 
         Vec3 explotionCenterPos = new Vec3(explotionCenterX, explotionCenterY, wallZ);
         explosionCircle = new ExplosionCircle(explotionCenterPos, explotionRadius);
