@@ -57,14 +57,10 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
     // ------ Dice
     private Wall diceWall;
     private Quader dice;
-    // Rotation data
-    private double[] IdF = new double[]{ 1, 2, 1 };
 
     // ------ Quader
     private Wall quaderWall;
     private Quader quader;
-    // Gyro data
-    private double[] IqF = new double[]{ 1, 2, 1 };
 
     // ------ Gravity
     private boolean isGravityOn;
@@ -218,10 +214,6 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
                         if (isGravityOn) {
                             wallBlocksV[i][j] = wallBlocksV[i][j].add(new Vec3(0, -g, 0).scale((float)dt));
                         }
-
-                        // Turn block (ROTATION)
-                        // todo: add rotation (gyro dynamics)
-
                     }
                 }
             }
@@ -248,8 +240,6 @@ public class PhysicsExercise5 implements WindowListener, GLEventListener, KeyLis
         }
 
         public boolean isBlockInsideExplosion(Vec3 blockPos) {
-            // todo: also check edges of block (not only middle point
-
             // is center point of block inside circle
             return centerPosition.distance(blockPos) <= radius;
         }
